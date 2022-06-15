@@ -4,5 +4,5 @@
 ###### Spring Boot WEB
 ###### Spring Boot JPA
 ###### Spring Boot DevTools
-###### Lombok
+###### Project Lombok
 ###### PostgreSQL
