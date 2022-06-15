@@ -2,6 +2,8 @@ package com.example.demo.controller;
 
 import java.util.ArrayList;                                       // Imports
 import java.util.List;
+import java.util.Optional;
+
 import org.springframework.http.ResponseEntity; 
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,93 +15,86 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import com.example.demo.entities.Car;
 import com.example.demo.entities.Category;
+import com.example.demo.repositories.CarRepository;
 
 
 @RestController
 public class CarController {
-
+    private CarRepository carRepository;   // Inserção do CarRepository
     private Long lastId;
     private List<Car> listCars;
 
-    public CarController() {                              // New ArrayList CarController
+    public CarController(CarRepository carRepository) {
+        this.carRepository = carRepository;                          
         listCars = new ArrayList<>();
         lastId = 1L;
     }
 
-    @PostMapping("/car")                                        // POST Create new car
+    @PostMapping("/cars")                                        // POST Create new car
     public ResponseEntity<Car> create(@RequestBody Car car) {
-        car.setId(lastId);
-        lastId++;
-        this.listCars.add(car);
-        return ResponseEntity.ok(car);
+        Car savedCar = carRepository.save(car);
+        return ResponseEntity.ok(savedCar);
     }
 
 
     // Localhost:8080/cars?category=
-    @GetMapping("/cars")                                        // GET Listar todos os cars criado
+    @GetMapping("/{id}")                                        // GET Listar todos os cars criado
     public ResponseEntity<List<Car>> findAll(
-    @RequestParam(value = "category", required = true) Category category) {
+    @RequestParam(value = "category", required = false) Category category) {
+        List<Car> cars;
         if (category != null) {
-            List<Car> categoryCars = new ArrayList<>();
-            for (int i = 0; i < listCars.size(); i++) {
-                if (listCars.get(i).getCategory().equals(category)) {
-                    categoryCars.add(listCars.get(i));
-                }
-            }
-
-            return ResponseEntity.ok(categoryCars);
+            cars = carRepository.findByCategory(category);
+        } else {
+            cars = carRepository.findAll();
         }
-        
-        return ResponseEntity.ok(listCars);
+        return ResponseEntity.ok(cars);
     }
 
     @GetMapping("/cars/{id}")                                  // GET por (ID) Cars
-    public ResponseEntity<Car> find(@PathVariable Long id) {
-                                                                /* Optional <Car> ca = listCars 
-                                                                 .stream()
-                                                                 filter(c -> c.get/id() == id)
-                                                                 .findFirst();
-                                                                */                                                     
-        Car car;
-        for(int i = 0; i < listCars.size(); i++) {              
-            car = listCars.get(i);
-            if (car.getId() == id) {
-                return ResponseEntity.ok(car);
-            }
+    public ResponseEntity<Car> find(@PathVariable Long id) {                                                                                              
+        Optional<Car> optionalCar = carRepository.findById(id);
+        if(optionalCar.isEmpty()) {
+            return ResponseEntity.notFound().build();
         }
-
-        return ResponseEntity.notFound().build();
+        Car car = optionalCar.get();
+        return ResponseEntity.ok(car);
     }
 
-
-    @PutMapping("/car/{id}")                                      // Update Car (ID)
+    @PutMapping("/cars/{id}")                                      // Update Car (ID)
     public ResponseEntity<Car> update(@PathVariable Long id,
                                         @RequestBody Car car) {
-    car.setId(id);
-    for(int i = 0; i < listCars.size(); i++) {
-        if (listCars.get(i).getId().equals(car.getId())) {
-
-                                                            // Substitui carro do indice i
-            listCars.set(i,car);
-
-            return ResponseEntity.ok(car);
-        }
+    Optional<Car> optionalCar = carRepository.findById(id);
+    if (optionalCar.isEmpty()) {
+        return ResponseEntity.notFound().build();
     }
 
-        return ResponseEntity.notFound().build();
+    Car foundCar = optionalCar.get();
+    if (car.getModel() != null) {
+        foundCar.setModel(car.getModel());
+    }
+    if (car.getManufacturer() != null) {
+        foundCar.setManufacturer(car.getManufacturer());
+    }
+    if (car.getYear() != null) {
+        foundCar.setYear(car.getYear());
+    }
+    if (car.getCategory() != null) {
+        foundCar.setCategory(car.getCategory());
+    }
 
+    carRepository.save(foundCar);
+    return ResponseEntity.ok(foundCar);
     }
 
     @DeleteMapping("/car/{id}")                                   // Delete Car (ID)
     public ResponseEntity<?> delete(@PathVariable Long id) {
-
-        for(int i = 0; i < listCars.size(); i++) {
-            if (listCars.get(i).getId().equals(id)) {
-                listCars.remove(i);
-                return ResponseEntity.ok().build();
-            }
+        Optional<Car> optionalCar = carRepository.findById(id);
+        if(optionalCar.isEmpty()) {
+            return ResponseEntity.notFound().build();
         }
+        Car foundCar = optionalCar.get();
+        carRepository.delete(foundCar);
 
-        return ResponseEntity.notFound().build();
+        return ResponseEntity.noContent().build();
     }
 }
